@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import logo from './logo.svg';
 import './App.css';
 
-type Tag = string;
-type Tags = Record<Tag, number>;
-type BlacklistedTags = Record<Tag, boolean>;
+interface Tag {
+  name: string;
+  count: number;
+}
+
+type BlacklistedTags = Record<string, boolean>;
 
 interface CheckboxProps {
   tag: Tag;
@@ -15,12 +18,12 @@ interface CheckboxProps {
 const Checkbox: React.FC<CheckboxProps> = ({ tag, checked, onChange }) => (
   <div>
     <input type="checkbox" checked={checked} onChange={onChange} />
-    {tag}
+    {tag.name} {tag.count}
   </div>
 );
 
 interface TagSelectionProps {
-  tags: Tags;
+  tags: Tag[];
 }
 
 const TagSelection: React.FC<TagSelectionProps> = ({ tags }) => {
@@ -30,23 +33,23 @@ const TagSelection: React.FC<TagSelectionProps> = ({ tags }) => {
   const [showBlacklist, setShowBlacklist] = useState(false);
 
   const handleRandomize = () => {
-    const tagNames = Object.keys(tags).filter(tagName => !blacklistedTags[tagName]);
+    const filteredTags = tags.filter((tag: Tag) => !blacklistedTags[tag.name]);
 
     // Shuffle tagNames array
-    for (let i = tagNames.length - 1; i > 0; i--) {
+    for (let i = filteredTags.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [tagNames[i], tagNames[j]] = [tagNames[j], tagNames[i]];
+      [filteredTags[i], filteredTags[j]] = [filteredTags[j], filteredTags[i]];
     }
 
-    const selected = tagNames.slice(0, count);
+    const selected = filteredTags.slice(0, count);
 
     // Sort the tags based on the value of tags prop
-    selected.sort((a, b) => tags[b] - tags[a]);
+    selected.sort((a: Tag, b: Tag) => b.count - a.count);
 
     setSelectedTags(selected);
   };
 
-  const handleBlacklistChange = (tagName: Tag) => {
+  const handleBlacklistChange = (tagName: string) => {
     setBlacklistedTags(prevState => ({ ...prevState, [tagName]: !prevState[tagName] }));
   };
 
@@ -62,17 +65,17 @@ const TagSelection: React.FC<TagSelectionProps> = ({ tags }) => {
       <button onClick={handleRandomize}>Randomize</button>
       <div>
         {selectedTags.map(tag => (
-          <div key={tag}>{tag}</div>
+          <div key={tag.name}>{tag.name}</div>
         ))}
       </div>
       <button onClick={toggleBlacklist}>Toggle Blacklist</button>
       {showBlacklist &&
-        Object.keys(tags).map(tagName => (
+        tags.map(tag => (
           <Checkbox
-            key={tagName}
-            tag={tagName}
-            checked={blacklistedTags[tagName] || false}
-            onChange={() => handleBlacklistChange(tagName)}
+            key={tag.name}
+            tag={tag}
+            checked={blacklistedTags[tag.name] || false}
+            onChange={() => handleBlacklistChange(tag.name)}
           />
         ))}
     </div>
@@ -80,10 +83,28 @@ const TagSelection: React.FC<TagSelectionProps> = ({ tags }) => {
 };
 
 function App() {
-  const tags: Tags =  {
-    'a': 1,
-    'b': 2,
-    'c': 3
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      const response = await fetch('/tags.json');
+      const jsonData = await response.json();
+      setTags(jsonData);
+      setIsLoading(false);
+    };
+
+    fetchData();
+  }, []);
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (tags === null) {
+    return <div>ERROR: Tag information could not be loaded...</div>;
+
   }
   return (
     <div className="App">
