@@ -1,5 +1,8 @@
 name: Deploy to GitHub Pages
 
+permissions:
+  contents: 'read'
+  id-token: 'write'
 on:
   push:
     branches:
@@ -33,7 +36,7 @@ jobs:
         id: check-file
         run: |
           if [ $(find public -name 'tags.json' -mtime +1 -print) ]; then echo "::set-output name=run::true"; else echo "::set-output name=run::false"; fi
-          
+
       - name: Run Scrape if tags.json is older than 1 day
         run: npm run scrape
         if: steps.check-file.outputs.run == 'true'
